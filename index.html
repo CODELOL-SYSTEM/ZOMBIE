@@ -1,79 +1,92 @@
-
 <!DOCTYPE html>
 <html lang="fr">
 <head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width,initial-scale=1">
-  <title>PROTECT GRANDMA</title>
-  <style>
-    *{box-sizing:border-box}
-    body{margin:0;overflow:hidden;background:#080b10;color:#fff;font-family:Arial,sans-serif}
-    canvas{display:block}
-    button,select{font:inherit}
-    .screen{position:fixed;inset:0;display:flex;align-items:center;justify-content:center;background:linear-gradient(120deg,#080b10ee,#101820dd);z-index:5}
-    .panel{width:min(560px,92vw);padding:32px;background:#101820ed;border:1px solid #ffffff20;border-radius:18px;box-shadow:0 20px 80px #000a}
-    h1{font-size:clamp(36px,7vw,64px);margin:0 0 8px;letter-spacing:3px}
-    h1 span{color:#e34b45}
-    h2{margin-top:0}
-    p{color:#aab6c4;line-height:1.5}
-    button{border:0;border-radius:9px;padding:13px 18px;background:#d8443f;color:white;font-weight:bold;cursor:pointer;margin:5px;transition:.2s}
-    button:hover{transform:translateY(-2px);filter:brightness(1.15)}
-    button.secondary{background:#273543}
-    .actions{display:flex;flex-wrap:wrap;margin-top:20px}
-    .setting{display:flex;justify-content:space-between;align-items:center;gap:12px;margin:14px 0;color:#dce4ec}
-    select{background:#202d39;color:white;border:1px solid #ffffff30;border-radius:7px;padding:9px}
-    #hud{display:none;position:fixed;inset:0;pointer-events:none;z-index:2}
-    #crosshair{position:absolute;left:50%;top:50%;width:8px;height:8px;border:1px solid white;border-radius:50%;transform:translate(-50%,-50%)}
-    #help{position:absolute;left:22px;bottom:22px;background:#080b10b8;padding:12px 16px;border-radius:9px;color:#e6edf5}
-    #status{position:absolute;right:22px;top:20px;background:#080b10c9;padding:12px 16px;border-radius:9px}
-    #message{position:absolute;left:50%;top:68%;transform:translateX(-50%);background:#080b10d9;padding:12px 20px;border-radius:9px;opacity:0;transition:.2s}
-    #message.show{opacity:1}
-    #settings{display:none}
-    .small{font-size:12px;color:#8998a8}
-  </style>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Protect Grandma</title>
+<style>
+*{box-sizing:border-box;margin:0}
+html,body{height:100%;overflow:hidden;background:#05070b;color:#e8e4da;font:15px/1.5 Georgia,'Times New Roman',serif}
+canvas{position:fixed;inset:0;width:100%;height:100%;display:block}
+.ov{position:fixed;inset:0;display:flex;align-items:center;justify-content:center;background:rgba(5,7,11,.72);z-index:5}
+.ov.hide,.hide{display:none}
+.panel{max-width:560px;padding:32px 36px;background:#10141c;border:1px solid #3a2a24}
+h1{font-size:44px;line-height:1.05;letter-spacing:.5px;color:#d8c9a8;margin-bottom:6px}
+h2{font-size:28px;color:#c9553d;margin-bottom:10px}
+p.sub{color:#8d97a6;margin-bottom:18px}
+table{border-collapse:collapse;margin:14px 0 20px;width:100%}
+td{padding:2px 0;font-size:14px}td:first-child{color:#d8c9a8;width:44%}
+button{font:inherit;font-size:17px;padding:10px 26px;background:#c9553d;color:#fff;border:0;cursor:pointer}
+button:hover,button:focus-visible{background:#e0654a;outline:2px solid #d8c9a8}
+small{display:block;margin-top:14px;color:#6f7886;font-size:12px}
+#hud{position:fixed;inset:0;pointer-events:none;z-index:2}
+.bar{position:absolute;left:18px;width:220px;height:12px;background:#0008;border:1px solid #fff3}
+.bar i{display:block;height:100%}
+#hpBar{top:18px}#hpBar i{background:#c9553d}
+#stBar{top:36px}#stBar i{background:#d8b44a}
+#nsBar{top:54px;height:6px}#nsBar i{background:#7aa2c9}
+#info{position:absolute;top:16px;right:20px;text-align:right;text-shadow:0 1px 3px #000}
+#prompt{position:absolute;bottom:90px;width:100%;text-align:center;font-size:18px;text-shadow:0 1px 4px #000}
+#msg{position:absolute;top:90px;width:100%;text-align:center;font-size:22px;color:#d8c9a8;text-shadow:0 2px 6px #000}
+#bubble{position:absolute;bottom:40px;left:20px;font-style:italic;color:#e7c9d0;text-shadow:0 1px 4px #000}
+#cross{position:absolute;left:50%;top:50%;width:6px;height:6px;margin:-3px;border-radius:50%;background:#fffc}
+#flash{position:fixed;inset:0;background:radial-gradient(transparent 40%,#a01010);opacity:0;z-index:3;pointer-events:none}
+</style>
+<script type="importmap">{"imports":{"three":"https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.module.js"}}</script>
 </head>
 <body>
-  <div id="menu" class="screen">
-    <div class="panel">
-      <div class="small">UNE NUIT. UNE MAISON. UNE MISSION.</div>
-      <h1>PROTECT <span>GRANDMA</span></h1>
-      <p>Prépare la maison, installe les barricades et protège mamie jusqu'au matin.</p>
-      <div class="actions">
-        <button id="start">JOUER</button>
-        <button class="secondary" id="openSettings">PARAMÈTRES</button>
-      </div>
-      <p class="small">Prototype 3D jouable • Souris pour regarder • ZQSD pour bouger</p>
-    </div>
+<canvas id="c"></canvas>
+<div id="flash"></div>
+<div id="hud" class="hide">
+  <div class="bar" id="hpBar"><i></i></div>
+  <div class="bar" id="stBar"><i></i></div>
+  <div class="bar" id="nsBar"><i></i></div>
+  <div id="info"></div>
+  <div id="cross" class="hide"></div>
+  <div id="msg"></div>
+  <div id="prompt"></div>
+  <div id="bubble"></div>
+</div>
+<div id="menu" class="ov">
+  <div class="panel">
+    <h1>Protect Grandma</h1>
+    <p class="sub">Groupe 1 : déplacements, quartier, maison et zombies. Mode solo.</p>
+    <table>
+      <tr><td>Z Q S D (AZERTY) ou W A S D</td><td>Se déplacer (avec la souris pour la caméra)</td></tr>
+      <tr><td>Maj</td><td>Courir</td></tr>
+      <tr><td>F (maintenir)</td><td>Sprinter (consomme l'énergie)</td></tr>
+      <tr><td>C / X</td><td>S'accroupir ou glisser en courant / ramper</td></tr>
+      <tr><td>Espace / B</td><td>Sauter / roulade</td></tr>
+      <tr><td>Clic gauche</td><td>Coup de poing</td></tr>
+      <tr><td>E</td><td>Interagir</td></tr>
+      <tr><td>Y / T</td><td>Bandage / garrot (morsure)</td></tr>
+      <tr><td>N</td><td>Lancer la nuit</td></tr>
+      <tr><td>V</td><td>Vue 1re / 3e personne</td></tr>
+    </table>
+    <button id="playBtn">Jouer en solo</button>
+    <button id="setBtn" style="margin-left:10px;background:#3a2a24">Paramètres</button>
+    <small>Multijoueur, armes, portes et boutique arrivent dans les groupes suivants.</small>
   </div>
-
-  <div id="settings" class="screen">
-    <div class="panel">
-      <h2>PARAMÈTRES</h2>
-      <label class="setting">Qualité graphique
-        <select id="quality"><option value="low">Faible</option><option value="medium" selected>Moyen</option><option value="high">Élevé</option></select>
-      </label>
-      <label class="setting">Intensité du sang stylisé
-        <select id="blood"><option value="off">Désactivé</option><option value="low" selected>Faible</option><option value="medium">Moyen</option><option value="high">Élevé</option></select>
-      </label>
-      <label class="setting">Sensibilité souris
-        <select id="sensitivity"><option value="0.001">Faible</option><option value="0.002" selected>Normale</option><option value="0.004">Élevée</option></select>
-      </label>
-      <label class="setting">Volume
-        <select id="volume"><option value="0">Muet</option><option value="0.5" selected>50 %</option><option value="1">100 %</option></select>
-      </label>
-      <div class="actions">
-        <button id="saveSettings">APPLIQUER</button>
-        <button class="secondary" id="backMenu">RETOUR</button>
-      </div>
-    </div>
+</div>
+<div id="settings" class="ov hide">
+  <div class="panel">
+    <h2>Paramètres</h2>
+    <p class="sub">Le sang léger est toujours actif.</p>
+    <label><input type="checkbox" id="goreCk"> Gore (sang abondant, os, amputation)</label><br><br>
+    <label><input type="checkbox" id="orgCk"> Organes visibles (nécessite Gore)</label><br><br>
+    <button id="setClose">Fermer</button>
   </div>
-
-  <div id="hud">
-    <div id="crosshair"></div>
-    <div id="status">🪵 Planches : <span id="planks">4</span><br>❤️ Mamie : <span id="grandmaHealth">100</span>%</div>
-    <div id="help">ZQSD : bouger · Souris : regarder · E : interagir<br>F : ramasser · B : poser une planche · Échap : libérer la souris</div>
-    <div id="message"></div>
-  </div>
-  <script type="module" src="./app.js"></script>
+</div>
+<div id="conf" class="ov hide" style="z-index:9">
+  <div class="panel"><h2 id="confT"></h2><p id="confP" class="sub"></p>
+    <button id="confYes">Oui</button> <button id="confNo" style="background:#3a3f4a">Non</button></div>
+</div>
+<div id="pause" class="ov hide">
+  <div class="panel"><h2>Pause</h2><button id="resumeBtn">Reprendre</button></div>
+</div>
+<div id="over" class="ov hide">
+  <div class="panel"><h2>Vous avez été submergé</h2><p id="ovStats"></p><br><button id="menuBtn">Retour au menu</button></div>
+</div>
+<script type="module" src="app.js"></script>
 </body>
 </html>
