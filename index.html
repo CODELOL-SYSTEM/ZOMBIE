@@ -2,38 +2,76 @@
 <html lang="fr">
 <head>
 <meta charset="utf-8">
-<title>PROTECT GRANDMA</title>
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Protect Grandma</title>
 <style>
- body{margin:0;overflow:hidden;background:#000;font-family:system-ui,sans-serif;color:#fff}
- canvas{display:block}
- .ov{position:fixed;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;background:rgba(0,0,0,.85);text-align:center;padding:20px}
- button{background:#8b1a1a;color:#fff;border:0;border-radius:8px;padding:10px 18px;margin:5px;font-size:16px;cursor:pointer}
- button:disabled{background:#222;color:#666;cursor:not-allowed}
- #hud{position:fixed;top:12px;right:16px;text-align:right;font-size:20px;text-shadow:0 0 4px #000;line-height:1.5}
- #info{position:fixed;top:12px;left:16px;font-size:15px;text-shadow:0 0 4px #000;line-height:1.5}
- #cross{position:fixed;top:50%;left:50%;width:6px;height:6px;margin:-3px;background:#fff;border-radius:50%;opacity:.7}
- #msg{position:fixed;bottom:70px;width:100%;text-align:center;font-size:20px;text-shadow:0 0 4px #000}
- .hide{display:none!important}
+*{box-sizing:border-box;margin:0}
+html,body{height:100%;overflow:hidden;background:#05070b;color:#e8e4da;font:15px/1.5 Georgia,'Times New Roman',serif}
+canvas{position:fixed;inset:0;width:100%;height:100%;display:block}
+.ov{position:fixed;inset:0;display:flex;align-items:center;justify-content:center;background:rgba(5,7,11,.72);z-index:5}
+.ov.hide,.hide{display:none}
+.panel{max-width:560px;padding:32px 36px;background:#10141c;border:1px solid #3a2a24}
+h1{font-size:44px;line-height:1.05;letter-spacing:.5px;color:#d8c9a8;margin-bottom:6px}
+h2{font-size:28px;color:#c9553d;margin-bottom:10px}
+p.sub{color:#8d97a6;margin-bottom:18px}
+table{border-collapse:collapse;margin:14px 0 20px;width:100%}
+td{padding:2px 0;font-size:14px}td:first-child{color:#d8c9a8;width:44%}
+button{font:inherit;font-size:17px;padding:10px 26px;background:#c9553d;color:#fff;border:0;cursor:pointer}
+button:hover,button:focus-visible{background:#e0654a;outline:2px solid #d8c9a8}
+small{display:block;margin-top:14px;color:#6f7886;font-size:12px}
+#hud{position:fixed;inset:0;pointer-events:none;z-index:2}
+.bar{position:absolute;left:18px;width:220px;height:12px;background:#0008;border:1px solid #fff3}
+.bar i{display:block;height:100%}
+#hpBar{top:18px}#hpBar i{background:#c9553d}
+#stBar{top:36px}#stBar i{background:#d8b44a}
+#nsBar{top:54px;height:6px}#nsBar i{background:#7aa2c9}
+#info{position:absolute;top:16px;right:20px;text-align:right;text-shadow:0 1px 3px #000}
+#prompt{position:absolute;bottom:90px;width:100%;text-align:center;font-size:18px;text-shadow:0 1px 4px #000}
+#msg{position:absolute;top:90px;width:100%;text-align:center;font-size:22px;color:#d8c9a8;text-shadow:0 2px 6px #000}
+#bubble{position:absolute;bottom:40px;left:20px;font-style:italic;color:#e7c9d0;text-shadow:0 1px 4px #000}
+#cross{position:absolute;left:50%;top:50%;width:6px;height:6px;margin:-3px;border-radius:50%;background:#fffc}
+#flash{position:fixed;inset:0;background:radial-gradient(transparent 40%,#a01010);opacity:0;z-index:3;pointer-events:none}
 </style>
+<script type="importmap">{"imports":{"three":"https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.module.js"}}</script>
 </head>
 <body>
-<div id="info"></div>
-<div id="hud"></div>
-<div id="cross"></div>
-<div id="msg"></div>
-
-<div id="menu" class="ov">
- <h1 style="color:#c22">PROTECT GRANDMA</h1>
- <p>Protège ta grand-mère pendant les nuits de zombies.<br>
- Le jour : achète à la TV (E), barricade les portes et fenêtres (E). La nuit : survis jusqu'à l'aube.</p>
- <p style="font-size:14px;opacity:.8">ZQSD/WASD bouger · Maj sprinter · C s'accroupir · Espace sauter · Clic tirer/frapper · 1-3 armes<br>
- E interagir (TV, barricade, grand-mère) · N passer au début de la nuit · Échap pause</p>
- <div><button id="bNew">Nouvelle partie</button><button id="bCont">Continuer</button></div>
+<canvas id="c"></canvas>
+<div id="flash"></div>
+<div id="hud" class="hide">
+  <div class="bar" id="hpBar"><i></i></div>
+  <div class="bar" id="stBar"><i></i></div>
+  <div class="bar" id="nsBar"><i></i></div>
+  <div id="info"></div>
+  <div id="cross" class="hide"></div>
+  <div id="msg"></div>
+  <div id="prompt"></div>
+  <div id="bubble"></div>
 </div>
-<div id="shop" class="ov hide"></div>
-<div id="end" class="ov hide"></div>
-
-<script type="importmap">{"imports":{"three":"https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.module.js"}}</script>
+<div id="menu" class="ov">
+  <div class="panel">
+    <h1>Protect Grandma</h1>
+    <p class="sub">Groupe 1 : déplacements, quartier, maison et zombies. Mode solo.</p>
+    <table>
+      <tr><td>Z Q S D (AZERTY) ou W A S D</td><td>Se déplacer (avec la souris pour la caméra)</td></tr>
+      <tr><td>Maj</td><td>Courir</td></tr>
+      <tr><td>F (maintenir)</td><td>Sprinter (consomme l'énergie)</td></tr>
+      <tr><td>C / X</td><td>S'accroupir ou glisser en courant / ramper</td></tr>
+      <tr><td>Espace / B</td><td>Sauter / roulade</td></tr>
+      <tr><td>Clic gauche</td><td>Coup de poing</td></tr>
+      <tr><td>E</td><td>Interagir</td></tr>
+      <tr><td>N</td><td>Lancer la nuit</td></tr>
+      <tr><td>V</td><td>Vue 1re / 3e personne</td></tr>
+    </table>
+    <button id="playBtn">Jouer en solo</button>
+    <small>Multijoueur, armes, portes et boutique arrivent dans les groupes suivants.</small>
+  </div>
+</div>
+<div id="pause" class="ov hide">
+  <div class="panel"><h2>Pause</h2><button id="resumeBtn">Reprendre</button></div>
+</div>
+<div id="over" class="ov hide">
+  <div class="panel"><h2>Vous avez été submergé</h2><p id="ovStats"></p><br><button id="menuBtn">Retour au menu</button></div>
+</div>
 <script type="module" src="app.js"></script>
 </body>
 </html>
