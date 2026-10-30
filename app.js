@@ -857,3 +857,145 @@ mpd.onclick = async e => {
     else if (m === 'jc') await mpJoin(b.dataset.c, false);
   } catch (x) { mpMsg('Erreur : ' + x.message) }
 };
+/* =====================================================================
+   V4 : MODÈLES RÉALISTES (voitures, TV, frigo, fauteuil, canapé, mamie, zombies, joueur)
+   À COLLER TOUT EN BAS DE app.js, APRÈS LE BLOC V3. Aucune autre modification nécessaire.
+   ===================================================================== */
+const mmX = (p, g, m, x, y, z, rx = 0, ry = 0, rz = 0) => { const o = new THREE.Mesh(g, m); o.position.set(x, y, z); o.rotation.set(rx, ry, rz); o.castShadow = true; p.add(o); return o };
+const mtX = (c, r = .6, m = 0) => new THREE.MeshStandardMaterial({ color: c, roughness: r, metalness: m });
+function rbX(w, h, d, r = .03) { // boîte à angles arrondis
+  const s = new THREE.Shape(), x = -w / 2, y = -h / 2; s.moveTo(x + r, y); s.lineTo(x + w - r, y); s.quadraticCurveTo(x + w, y, x + w, y + r); s.lineTo(x + w, y + h - r); s.quadraticCurveTo(x + w, y + h, x + w - r, y + h);
+  s.lineTo(x + r, y + h); s.quadraticCurveTo(x, y + h, x, y + h - r); s.lineTo(x, y + r); s.quadraticCurveTo(x, y, x + r, y);
+  const g = new THREE.ExtrudeGeometry(s, { depth: d - .02, bevelEnabled: true, bevelThickness: .01, bevelSize: .01, bevelSegments: 2, curveSegments: 5 }); g.translate(0, 0, -(d - .02) / 2); return g;
+}
+const RX = (p, w, h, d, m, x, y, z, r) => mmX(p, rbX(w, h, d, r), m, x, y, z);
+const clearX = (x, y, z) => scene.children.filter(o => o.isMesh && Math.abs(o.position.x - x) < .03 && Math.abs(o.position.y - y) < .03 && Math.abs(o.position.z - z) < .03).forEach(o => scene.remove(o));
+const cvX = (w, h, fn) => { const c = document.createElement('canvas'); c.width = w; c.height = h; fn(c.getContext('2d'), w, h); const t = new THREE.CanvasTexture(c); t.anisotropy = 4; return t };
+const gold = mtX(0xc9a23a, .3, 1), chrome = mtX(0xb8bcc2, .2, 1), blackX = mtX(0x0c0d10, .4, .5);
+
+/* ---------- TÉLÉVISION + MEUBLE TV ---------- */
+clearX(-4, 1.35, 5.5); clearX(-4, .5, 5.5);
+{
+  const g = new THREE.Group(); g.position.set(-4, 0, 5.5); g.rotation.y = PI; scene.add(g);
+  const wood = mtX(0x3a2a20, .5), wood2 = mtX(0x4a3426, .5);
+  RX(g, 1.8, .86, .42, wood, 0, .47, 0, .04); RX(g, 1.84, .04, .46, mtX(0x2a1d16, .4), 0, .92, 0, .015);
+  for (const sx of [-.45, .45]) { RX(g, .8, .7, .02, wood2, sx, .47, .215, .02); mmX(g, new THREE.SphereGeometry(.02, 8, 6), gold, sx > 0 ? .1 : -.1, .55, .235) }
+  RX(g, .5, .02, .24, blackX, 0, .955, 0, .008); RX(g, .1, .1, .05, blackX, 0, 1.0, 0, .01);
+  RX(g, 1.46, .86, .05, blackX, 0, 1.46, 0, .02);
+  const scr = new THREE.Mesh(new THREE.PlaneGeometry(1.4, .8), new THREE.MeshBasicMaterial({
+    map: cvX(512, 290, (x, w, h) => {
+      const gr = x.createLinearGradient(0, 0, w, h); gr.addColorStop(0, '#0b2a55'); gr.addColorStop(1, '#14061f'); x.fillStyle = gr; x.fillRect(0, 0, w, h);
+      x.fillStyle = '#ffd45a'; x.font = 'bold 40px sans-serif'; x.textAlign = 'center'; x.fillText('TÉLÉ-ACHAT', w / 2, 54);
+      ['🔨 Planche', '🔪 Couteau', '🔫 Armes', '🩹 Soins'].forEach((t, i) => { x.fillStyle = '#ffffff22'; x.fillRect(24 + i * 120, 90, 108, 120); x.fillStyle = '#fff'; x.font = '15px sans-serif'; x.fillText(t, 78 + i * 120, 200) });
+      x.fillStyle = '#c9553d'; x.fillRect(0, 250, w, 40); x.fillStyle = '#fff'; x.font = 'bold 18px sans-serif'; x.fillText('OFFRE SPÉCIALE  ·  APPUYEZ SUR E', w / 2, 277);
+      x.fillStyle = '#0003'; for (let y = 0; y < h; y += 4) x.fillRect(0, y, w, 1);
+    })
+  })); scr.position.set(0, 1.46, .03); g.add(scr);
+  mmX(g, new THREE.SphereGeometry(.012, 8, 6), new THREE.MeshBasicMaterial({ color: 0xff2222 }), .62, 1.06, .03);
+  RX(g, .05, .02, .16, blackX, .55, .955, .12, .006);
+  const gl = new THREE.PointLight(0x6fb0ff, .8, 5); gl.position.set(0, 1.5, .9); g.add(gl);
+}
+
+/* ---------- FRIGO ---------- */
+clearX(7.4, 1, 1.5);
+{
+  const g = new THREE.Group(); g.position.set(7.4, 0, 1.5); g.rotation.y = -PI / 2; scene.add(g);
+  const wh = mtX(0xeceff2, .25, .35), bk = mtX(0x18191c, .5);
+  RX(g, .8, 1.96, .76, wh, 0, 1, 0, .05); RX(g, .76, .62, .03, wh, 0, 1.62, .39, .03); RX(g, .76, 1.24, .03, wh, 0, .78, .39, .03);
+  mmX(g, new THREE.BoxGeometry(.78, .012, .01), bk, 0, 1.3, .41);
+  RX(g, .025, .4, .04, chrome, -.3, 1.6, .44, .012); RX(g, .025, .8, .04, chrome, -.3, .95, .44, .012); RX(g, .14, .03, .01, chrome, 0, 1.9, .41, .005);
+  for (let i = 0; i < 5; i++) mmX(g, new THREE.BoxGeometry(.5, .008, .01), bk, 0, .06 + i * .014, .4);
+  for (const sx of [-.3, .3]) mmX(g, new THREE.CylinderGeometry(.03, .035, .04, 10), bk, sx, .02, .3);
+  RX(g, .12, .15, .004, mtX(0xf5f0d0, .9), .2, 1.55, .41, .003); mmX(g, new THREE.CylinderGeometry(.02, .02, .008, 10), mtX(0xc9553d), .15, 1.62, .41, PI / 2); mmX(g, new THREE.CylinderGeometry(.02, .02, .008, 10), mtX(0x2a8a5a), .26, 1.48, .41, PI / 2);
+  mmX(g, new THREE.PlaneGeometry(.3, .5), new THREE.MeshBasicMaterial({ color: 0x3a2a1a, transparent: true, opacity: .12 }), .1, .5, .412);
+}
+
+/* ---------- FAUTEUIL À BASCULE DE MAMIE + PLAID ---------- */
+clearX(-4, .3, -3);
+{
+  const g = new THREE.Group(); g.position.set(-4, 0, -3); scene.add(g);
+  const wd = mtX(0x5a3a20, .45), fab = mtX(0x7a2a2a, .9);
+  RX(g, .56, .11, .56, fab, 0, .46, 0, .04);
+  for (const sx of [-.25, .25]) for (const sz of [-.25, .25]) mmX(g, new THREE.CylinderGeometry(.03, .026, .45, 10), wd, sx, .22, sz);
+  for (const sx of [-.25, .25]) { mmX(g, new THREE.CylinderGeometry(.03, .03, .95, 10), wd, sx, .72, -.27, -.12); RX(g, .05, .04, .56, wd, sx + (sx > 0 ? .04 : -.04), .68, 0, .015); mmX(g, new THREE.CylinderGeometry(.025, .025, .24, 8), wd, sx + (sx > 0 ? .04 : -.04), .56, .25) }
+  RX(g, .58, .08, .05, wd, 0, 1.18, -.31, .02); RX(g, .5, .42, .08, fab, 0, .86, -.24, .05);
+  for (let i = -2; i <= 2; i++) mmX(g, new THREE.CylinderGeometry(.012, .012, .3, 6), wd, i * .1, 1.04, -.3);
+  for (const sx of [-.27, .27]) { const rk = new THREE.Group(); rk.position.set(sx, .75, 0); rk.rotation.y = PI / 2; g.add(rk); mmX(rk, new THREE.TorusGeometry(.7, .025, 8, 24, 1.1), wd, 0, 0, 0, 0, 0, -PI / 2 - .55) }
+  // plaid tricoté sur les genoux
+  const plaid = mtX(0xffffff, .95); plaid.map = cvX(128, 128, (x, w, h) => { x.fillStyle = '#9a3a3a'; x.fillRect(0, 0, w, h); x.fillStyle = '#e8d8a8'; for (let i = 0; i < w; i += 32) { x.fillRect(i, 0, 10, h); x.fillRect(0, i, w, 10) } });
+  RX(g, .55, .07, .5, plaid, 0, .62, .32, .03); RX(g, .55, .36, .07, plaid, 0, .44, .56, .03);
+}
+{ const gu = grandma.userData; gu.g.position.y = -1.12 }
+
+/* ---------- CANAPÉ ---------- */
+clearX(-7.3, .4, 3);
+{
+  const g = new THREE.Group(); g.position.set(-7.3, 0, 3); g.rotation.y = PI / 2; scene.add(g); const f = mtX(0x5a2f22, .9);
+  RX(g, 3, .3, 1, f, 0, .25, 0, .05); for (const x of [-1, 0, 1]) RX(g, .95, .17, .85, mtX(0x6a3828, .9), x, .46, .05, .06);
+  RX(g, 3, .6, .26, f, 0, .75, -.4, .08); for (const sx of [-1.4, 1.4]) RX(g, .24, .55, 1, f, sx, .55, 0, .07);
+  RX(g, .4, .4, .12, mtX(0xd8c9a8, .9), -1, .75, -.2, .05); RX(g, .4, .4, .12, mtX(0x2a5a7a, .9), 1, .75, -.2, .05);
+  for (const sx of [-1.35, 1.35]) for (const sz of [-.4, .4]) mmX(g, new THREE.CylinderGeometry(.03, .025, .1, 8), mtX(0x2a1a10), sx, .05, sz);
+}
+
+/* ---------- VOITURES DÉTAILLÉES (carrosserie profilée, vitres, jantes, phares, plaque, saleté) ---------- */
+function car2(x, z, rotY, col, idx) {
+  const g = new THREE.Group(); g.position.set(x, 0, z); g.rotation.y = rotY; scene.add(g);
+  const sh = new THREE.Shape(); sh.moveTo(-2.2, .3); sh.lineTo(-2.2, .78); sh.quadraticCurveTo(-2.2, .92, -1.9, .95); sh.lineTo(-1.2, 1); sh.lineTo(-.85, 1.42); sh.quadraticCurveTo(-.8, 1.5, -.6, 1.5);
+  sh.lineTo(.55, 1.5); sh.quadraticCurveTo(.8, 1.5, .95, 1.35); sh.lineTo(1.3, 1); sh.lineTo(2, .9); sh.quadraticCurveTo(2.2, .86, 2.22, .65); sh.lineTo(2.22, .3); sh.lineTo(-2.2, .3);
+  const bg = new THREE.ExtrudeGeometry(sh, { depth: 1.7, bevelEnabled: true, bevelThickness: .05, bevelSize: .05, bevelSegments: 3, curveSegments: 8 }); bg.translate(0, 0, -.85);
+  mmX(g, bg, new THREE.MeshPhysicalMaterial({ color: col, roughness: .45, metalness: .4, clearcoat: .6 }), 0, 0, 0);
+  const gs = new THREE.Shape(); gs.moveTo(-1.08, 1.03); gs.lineTo(-.78, 1.4); gs.lineTo(.52, 1.4); gs.lineTo(.88, 1.28); gs.lineTo(1.18, 1.03); gs.lineTo(-1.08, 1.03);
+  const gg = new THREE.ExtrudeGeometry(gs, { depth: 1.84, bevelEnabled: false }); gg.translate(0, 0, -.92);
+  mmX(g, gg, new THREE.MeshPhysicalMaterial({ color: 0x0a1418, roughness: .05, metalness: .8, transparent: true, opacity: .88 }), 0, 0, 0);
+  const pil = mtX(col, .5, .3); for (const sz of [-.93, .93]) { RX(g, .07, .42, .03, pil, -.1, 1.22, sz, .01); RX(g, .06, .46, .03, pil, .9, 1.17, sz, .01).rotation.z = -.55; mmX(g, new THREE.BoxGeometry(.05, .01, .01), chrome, -.35, .99, sz); mmX(g, new THREE.BoxGeometry(.05, .01, .01), chrome, .4, .99, sz) }
+  for (const dx of [-1, -.1, .85]) for (const sz of [-.89, .89]) mmX(g, new THREE.BoxGeometry(.008, .5, .006), blackX, dx, .62, sz);
+  for (const sx of [-2.25, 2.25]) RX(g, .14, .2, 1.76, mtX(0x1a1a1e, .5), sx, .4, 0, .04);
+  mmX(g, new THREE.BoxGeometry(.02, .14, .9), blackX, 2.23, .66, 0); for (let i = 0; i < 4; i++) mmX(g, new THREE.BoxGeometry(.03, .012, .88), chrome, 2.235, .6 + i * .035, 0);
+  for (const sz of [-.6, .6]) { mmX(g, new THREE.SphereGeometry(.1, 12, 8), new THREE.MeshStandardMaterial({ color: 0xfff2c0, emissive: 0x6a5a30 }), 2.15, .78, sz).scale.set(.5, .8, 1.4); RX(g, .04, .1, .3, new THREE.MeshStandardMaterial({ color: 0xaa1111, emissive: 0x330000 }), -2.22, .8, sz * 1.08, .01) }
+  const plate = new THREE.Mesh(new THREE.PlaneGeometry(.5, .12), new THREE.MeshBasicMaterial({ map: cvX(128, 32, (x, w, h) => { x.fillStyle = '#e8e4d0'; x.fillRect(0, 0, w, h); x.fillStyle = '#14316a'; x.fillRect(0, 0, 10, h); x.fillStyle = '#111'; x.font = 'bold 22px monospace'; x.fillText(String.fromCharCode(65 + idx * 3) + 'Z-' + (400 + idx * 77) + '-XT', 14, 24) }) })); plate.position.set(-2.265, .55, 0); plate.rotation.y = -PI / 2; g.add(plate);
+  for (const sz of [-.98, .98]) RX(g, .12, .07, .1, pil, .85, 1.05, sz, .02);
+  for (const fx of [-1.38, 1.38]) for (const sz of [-.82, .82]) {
+    const w = new THREE.Group(); w.position.set(fx, .3, sz); g.add(w); const flat = idx === 2 && fx > 0 && sz > 0; if (flat) { w.scale.y = .78; w.position.y = .24 }
+    mmX(w, new THREE.TorusGeometry(.27, .1, 12, 24), mtX(0x141414, .9), 0, 0, 0); mmX(w, new THREE.CylinderGeometry(.19, .19, .16, 20), chrome, 0, 0, 0, PI / 2); mmX(w, new THREE.CylinderGeometry(.06, .06, .2, 8), mtX(0x333333), 0, 0, 0, PI / 2);
+    for (let i = 0; i < 5; i++) { const s = mmX(w, new THREE.BoxGeometry(.18, .025, .02), chrome, 0, 0, sz > 0 ? .08 : -.08); s.rotation.z = i * 1.2566 }
+  }
+  const dirt = new THREE.MeshBasicMaterial({ color: 0x4a3a2a, transparent: true, opacity: .22 }); mmX(g, new THREE.BoxGeometry(1, .004, 1.5), dirt, 1.5, .92, 0, 0, 0, -.07); mmX(g, new THREE.BoxGeometry(1.2, .004, 1.5), dirt, -.1, 1.51, 0);
+  if (idx % 2 === 0) { const cr = new THREE.MeshBasicMaterial({ color: 0xcfd8dc, transparent: true, opacity: .6 }); for (let i = 0; i < 5; i++) mmX(g, new THREE.BoxGeometry(.3 + i * .05, .006, .006), cr, .9 + (i - 2) * .02, 1.15 + (i - 2) * .02, .25 * (i - 2), 0, 0, -.55 + i * .15) }
+  return g;
+}
+[[-14, 12], [9, 16.5], [-30, 11.5], [24, 12], [-6, 17], [38, 16.5]].forEach(([x, z], i) => {
+  const old = scene.children.filter(o => o.isGroup && o.children.length > 12 && Math.abs(o.position.x - x) < .03 && Math.abs(o.position.z - z) < .03)[0];
+  const ry = old ? old.rotation.y : 0; if (old) scene.remove(old); car2(x, z, ry, [0x8a2a2a, 0x3a4a6a, 0x666a70, 0x3a5a3a, 0xcfcfcf, 0x7a6a2a][i], i);
+});
+
+/* ---------- PERSONNAGES : vêtements, visages, mamie, zombies, sac à dos du joueur ---------- */
+function decorate(g, shirt, pants, skin, hair, o) {
+  const u = g.userData, hd = u.head, zom = !!o.mouth, gma = !!o.bun, dk = c => new THREE.Color(c).multiplyScalar(.75).getHex();
+  const P_ = (par, geo, col, x, y, z, sx = 1, sy = 1, sz = 1, rz = 0) => { const m = new THREE.Mesh(geo, mtX(col, .75)); m.position.set(x, y, z); m.scale.set(sx, sy, sz); m.rotation.z = rz; par.add(m); return m };
+  P_(g, new THREE.TorusGeometry(.085, .02, 6, 14), shirt, 0, 1.47, .01, 1, 1, .9).rotation.x = PI / 2;
+  P_(g, gBox, 0xc9a23a, 0, .93, .14, .04, .035, .01); P_(g, gBox, dk(shirt), 0, 1.15, .134, .008, .45, .006);
+  for (const sx of [-.12, .12]) P_(g, gBox, dk(pants), sx, .72, .115, .09, .1, .01);
+  for (const k of [u.kneeL, u.kneeR]) P_(k, new THREE.CylinderGeometry(.08, .08, .03, 10), dk(pants), 0, -.32, 0);
+  if (zom) {
+    for (const s of [-1, 1]) P_(hd, gBall, 0x1f1612, s * .055, .03, .128, .03, .026, .015);
+    for (let i = -3; i <= 3; i++) { P_(hd, gBox, 0xe0d8b8, i * .011, -.066, .146, .007, .013, .006); P_(hd, gBox, 0xd8d0b0, i * .011, -.09, .144, .007, .011, .006) }
+    P_(hd, gBox, 0x2a0a0a, 0, -.078, .14, .07, .03, .01); P_(hd, gBox, 0x5a0a0a, 0, -.105, .135, .05, .03, .005);
+    P_(g, gBox, 0x8a9a7c, .06, 1.1, .137, .1, .15, .004); P_(g, gBox, 0x3a0808, .08, 1.12, .139, .04, .06, .004);
+    [[-.12, .95, .2], [.05, .9, -.25], [.13, 1.0, .15]].forEach(([x, y, r]) => P_(g, gBox, shirt, x, y, .13, .05, .17, .01, r));
+    P_(u.armL, gBox, skin, 0, -.28, .0, .1, .12, .1); P_(u.armR, gBox, 0x3a0808, 0, -.2, .05, .06, .05, .06);
+    if (typeof wound === 'function' && G.blood > 0) { wound(u); wound(u) }
+  }
+  if (gma) {
+    for (let i = 0; i < 12; i++) { const a = i / 12 * 6.28; P_(hd, gBall, 0xf2f2f2, Math.cos(a) * .13, .04 + Math.sin(a) * .06, -.06 + Math.sin(a) * .05, .05, .05, .05) }
+    for (let i = 0; i < 16; i++) { const a = -1.3 + i / 15 * 2.6; P_(g, gBall, 0xf4f0e6, Math.sin(a) * .1, 1.47 - Math.abs(a) * .02, Math.cos(a) * .09 + .02, .014, .014, .014) }
+    for (let i = 0; i < 4; i++) P_(g, gBall, 0x5a3a4a, 0, 1.3 - i * .1, .138, .014, .014, .01);
+    P_(g, new THREE.TorusGeometry(.2, .05, 8, 18), 0xc79ab8, 0, 1.45, 0, 1, .7, 1).rotation.x = PI / 2;
+    for (const s of [-1, 1]) { P_(hd, gBall, 0xe8a0a0, s * .07, -.02, .125, .022, .016, .008); P_(hd, gBox, 0xb89a88, 0, .075 - (s > 0 ? .012 : 0), .14, .08, .003, .003) }
+    for (const k of [u.kneeL, u.kneeR]) P_(k, gBall, 0xd89ab8, 0, -.37, .07, .075, .045, .14);
+  }
+  if (o.player) { P_(g, gBox, 0x2a3a2a, 0, 1.2, -.17, .3, .4, .12); for (const s of [-.1, .1]) P_(g, gBox, 0x1a1a1a, s, 1.25, .12, .03, .35, .01) }
+}
+const _humanV4 = human;
+human = function (shirt, pants, skin, hair, o = {}) { const g = _humanV4(shirt, pants, skin, hair, o); decorate(g, shirt, pants, skin, hair, o); return g };
+decorate(pm.userData.g, 0x2a5a8a, 0x333a44, 0xe0b090, 0x3a2a1a, { shoe: 0xf2f2f2, player: 1 });
+decorate(grandma.userData.g, 0x9a6a8a, 0x5a4a5a, 0xe3c0a8, 0xdddddd, { bun: 1, glasses: 1, skirt: 0x5a4a5a, long: 1, shoe: 0x333333 });
