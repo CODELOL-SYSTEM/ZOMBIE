@@ -680,3 +680,180 @@ corpse=function(z){const u=z.a.userData;u.p.rotation.x=-PI/2;u.p.position.y=.22;
   if(G.org){const br=mkOrg('brain');br.position.set(0,.1,-.02);br.scale.set(.9,.7,.9);u.head.add(br);const cap=new THREE.Mesh(gBall,M(0x5a0a10,.25));cap.scale.set(.1,.04,.11);cap.position.set(0,.085,-.02);u.head.add(cap)}
   if(G.bones){const sk=bone(.1);sk.rotation.z=1.2;sk.position.set(.07,.1,0);u.head.add(sk)}
   pool(z.a.position.x,z.a.position.z,3.2);decal(z.a.position.x,z.a.position.z,3);keep(z.a)};
+/* =====================================================================
+   V3 : CHUTES RÉALISTES, OS ET ORGANES DÉTAILLÉS, TV ET TÉLÉPHONE RÉALISTES,
+   MULTIJOUEUR AVEC DIAGNOSTIC. À COLLER TOUT EN BAS DE app.js (rien d'autre à modifier).
+   ===================================================================== */
+const lerp = (a, b, t) => a + (b - a) * t, falls = [];
+const wetM = c => new THREE.MeshPhysicalMaterial({ color: c, roughness: .3, clearcoat: 1, clearcoatRoughness: .2 });
+
+/* ---------- 1. CHUTE RÉALISTE (genoux qui plient, torse qui bascule, rebond, bras qui pendent, tête qui ballotte) ---------- */
+function startFall(h, from) {
+  const u = h.userData, dx = h.position.x - from.x, dz = h.position.z - from.z, d = Math.hypot(dx, dz) || 1, fx = Math.sin(h.rotation.y), fz = Math.cos(h.rotation.y);
+  const f = { h, u, t: 0, T: 1.15, back: (-dx * fx - dz * fz) / d > 0, dx: dx / d, dz: dz / d, a1: -2.2 + rnd() * 2.4, a2: -2.2 + rnd() * 2.4, e1: -rnd() * 1.4, e2: -rnd() * 1.4, l1: (rnd() - .5) * .9, l2: (rnd() - .5) * .9, hz: (rnd() - .5) * .8, spin: (rnd() - .5) * 2, tw: rnd() < .6 };
+  falls.push(f); return f;
+}
+(function ft() {
+  requestAnimationFrame(ft); const now = performance.now(), dt = Math.min((now - (ft.l || now)) / 1000, .05); ft.l = now;
+  for (let i = falls.length - 1; i >= 0; i--) {
+    const f = falls[i], u = f.u; f.t += dt;
+    const k = Math.min(f.t / f.T, 1), s = Math.min(1, (k / .8) ** 2), bn = k > .8 ? Math.sin((k - .8) / .2 * PI) * .12 : 0, sg = f.back ? -1 : 1, buck = Math.sin(Math.min(k / .45, 1) * PI / 2) * (1 - s * .5);
+    u.p.rotation.x = sg * (PI / 2 * s - bn); u.p.position.y = lerp(.8, .22, s) + bn * .4;
+    u.kneeL.rotation.x = u.kneeR.rotation.x = 1.3 * buck; u.legL.rotation.x = lerp(0, f.l1, s) - .3 * buck; u.legR.rotation.x = lerp(0, f.l2, s) - .3 * buck;
+    u.armL.rotation.x = lerp(-1.4, f.a1, s); u.armR.rotation.x = lerp(-1.4, f.a2, s); u.elbL.rotation.x = lerp(-.3, f.e1, s); u.elbR.rotation.x = lerp(-.3, f.e2, s);
+    u.head.rotation.x = lerp(0, -sg * .6, s) + Math.sin(f.t * 14) * .06 * (1 - s); u.head.rotation.z = f.hz * s;
+    const v = (1 - k) * 3.2; f.h.position.x += f.dx * v * dt; f.h.position.z += f.dz * v * dt; f.h.rotation.y += f.spin * (1 - k) * dt; resolve(f.h.position, .3);
+    if (f.tw && f.t > f.T && f.t < f.T + 1.2) u.armL.rotation.x += Math.sin(f.t * 40) * .02;
+    if (f.t >= f.T + (f.tw ? 1.2 : 0)) { falls.splice(i, 1); f.after && f.after() }
+  }
+})();
+// Les zombies tués tombent au lieu de disparaître : on détache l'acteur pour que la boucle du jeu ne le supprime pas
+const _k3 = killZ;
+killZ = function (z) {
+  const real = z.a, from = P.pos.clone(); _k3(z); z.a = new THREE.Group();
+  const f = startFall(real, from); z.fb = f.back; f.after = () => { if (G.gore && GM()) corpseReal(z, real); else setTimeout(() => scene.remove(real), 7000) };
+};
+corpse = function () { };
+gibs = function (z) { blood(z.a.position.x, 1, z.a.position.z, 10) };
+// Mort du joueur : il s'effondre devant la caméra avant l'écran de défaite
+const _die = die; let dyn = 0;
+die = function () {
+  if (dyn || dead) return; dyn = 1; paused = true; fp = false; pm.visible = true; let n = null, nd = 1e9;
+  for (const z of Z) { const d = Math.hypot(z.a.position.x - P.pos.x, z.a.position.z - P.pos.z); if (d < nd) { nd = d; n = z } }
+  startFall(pm, n ? n.a.position : { x: P.pos.x - Math.sin(P.face), z: P.pos.z - Math.cos(P.face) });
+  cam.position.set(P.pos.x + Math.sin(P.cam) * 3.2, 2.4, P.pos.z + Math.cos(P.cam) * 3.2); cam.lookAt(P.pos.x, .5, P.pos.z);
+  setTimeout(() => { paused = false; _die() }, 1900);
+};
+
+/* ---------- 2. OS ET ORGANES DÉTAILLÉS ---------- */
+bone = function (L, brk) {
+  const g = new THREE.Group(); g.add(new THREE.Mesh(new THREE.CylinderGeometry(.013, .017, L, 10), mBone));
+  for (const s of [-1, 1]) for (const o of [-.011, .011]) { const e = new THREE.Mesh(gBall, mBone); e.scale.set(.024, .02, .024); e.position.set(o, s * L / 2, 0); g.add(e) }
+  if (brk) { const m = new THREE.Mesh(new THREE.CylinderGeometry(.011, .011, .006, 8), M(0x5a1a14, .4)); m.position.y = -L / 2 - .01; g.add(m) }
+  return g;
+};
+skull = function () {
+  const g = new THREE.Group(), dk = M(0x1a0a08, .9), b = (geo, mat, sx, sy, sz, x, y, z) => { const m = new THREE.Mesh(geo, mat); m.scale.set(sx, sy, sz); m.position.set(x, y, z); g.add(m); return m };
+  b(gBall, mBone, .1, .105, .115, 0, 0, 0); b(gBox, mBone, .07, .05, .06, 0, -.07, .07); b(gBox, mBone, .075, .03, .07, 0, -.12, .05);
+  for (const s of [-1, 1]) { b(gBall, dk, .026, .03, .02, s * .04, -.01, .1); b(gBall, mBone, .03, .02, .03, s * .065, -.05, .07) }
+  b(gBox, dk, .012, .025, .012, 0, -.05, .115); for (let i = -3; i <= 3; i++) { b(gBox, mBone, .008, .012, .008, i * .01, -.095, .108); b(gBox, mBone, .008, .012, .008, i * .01, -.108, .098) }
+  return g;
+};
+function mkOrg2(k) {
+  const g = new THREE.Group(), add = (m, x = 0, y = 0, z = 0) => { m.position.set(x, y, z); g.add(m); return m };
+  const ico = (r, c, amp, sx, sy, sz) => { const m = blob(r, c, .3, amp, 3); m.material = wetM(c); m.scale.set(sx, sy, sz); return m };
+  const vein = (pts, c, r) => new THREE.Mesh(new THREE.TubeGeometry(new THREE.CatmullRomCurve3(pts.map(p => new V3(...p))), 12, r, 6), wetM(c));
+  if (k === 'brain') { add(ico(.055, 0xd9a2ab, .1, 1, .85, 1.25), -.03); add(ico(.055, 0xd49aa4, .1, 1, .85, 1.25), .03); add(ico(.03, 0xc8909a, .12, 1.2, .7, .9), 0, -.04, -.07); add(vein([[0, -.04, 0], [0, -.08, .01], [0, -.1, .02]], 0xb98088, .011)); add(vein([[-.01, .05, .04], [0, .045, -.04], [.01, .05, -.08]], 0x8a1220, .004)) }
+  else if (k === 'heart') { add(ico(.05, 0x8a1220, .04, 1, 1.15, .9)); add(ico(.03, 0x7a0e1a, .04, 1, 1, 1), .035, .02, .01); add(vein([[0, .05, 0], [.01, .09, .01], [.03, .11, 0]], 0x9a1a28, .014)); add(vein([[-.02, .05, 0], [-.04, .09, .01]], 0x2a3a7a, .01)); add(vein([[.02, .05, .01], [.05, .08, .02]], 0x2a3a7a, .008)) }
+  else if (k === 'lung') { add(ico(.07, 0xc99098, .05, .7, 1.25, .75)); add(ico(.04, 0xb87a84, .05, .8, 1, .8), .02, -.04, .02); add(vein([[0, .07, 0], [0, .12, 0]], 0xd9b0a8, .012)) }
+  else if (k === 'liver') { add(ico(.085, 0x6a1a12, .03, 1.4, .55, .9)); add(ico(.04, 0x5a1410, .03, 1, .6, 1), .07, -.01, .02) }
+  else if (k === 'kidney') add(ico(.035, 0x6a1418, .03, .8, 1.3, .7));
+  else { const p = []; for (let i = 0; i < 16; i++) p.push([Math.cos(i * 1.3) * (.05 + rnd() * .03), (rnd() - .5) * .05, Math.sin(i * 1.3) * (.05 + rnd() * .03) + i * .012]); add(vein(p, 0xd9949c, .016)) }
+  return g;
+}
+function corpseReal(z, h) { // cadavre : thorax ouvert (côtes, sternum, colonne, organes), cerveau exposé, os éparpillés, flaques
+  const u = h.userData, back = z.fb !== false;
+  if (G.org || G.bones) {
+    const c = new THREE.Group(); c.position.set(0, 1.2, back ? .14 : -.14); if (!back) c.rotation.y = PI; u.g.add(c);
+    const fl = new THREE.Mesh(gBox, wetM(0x4a0810)); fl.scale.set(.3, .4, .05); c.add(fl);
+    if (G.bones) {
+      for (let i = -2; i <= 2; i++) for (const sg of [-1, 1]) { const rb = new THREE.Mesh(new THREE.TorusGeometry(.1, .011, 6, 12, PI), mBone); rb.position.set(sg * .012, i * .07, .045); rb.rotation.set(0, sg > 0 ? PI / 2 : -PI / 2, PI / 2); c.add(rb) }
+      const sp = bone(.38); sp.position.z = .02; c.add(sp);
+      for (let i = -2; i <= 2; i++) { const v = new THREE.Mesh(gBall, mBone); v.scale.set(.016, .012, .014); v.position.set(0, i * .075, .032); c.add(v) }
+      const st = new THREE.Mesh(gBox, mBone); st.scale.set(.025, .2, .01); st.position.set(0, .05, .1); c.add(st);
+    }
+    if (G.org) [['heart', -.05, .09], ['lung', -.1, .04], ['lung', .1, .04], ['liver', .08, -.06], ['kidney', -.07, -.08], ['kidney', .07, -.1], ['gut', 0, -.13]].forEach(([k, x, y]) => { const m = mkOrg2(k); m.position.set(x, y, .07); c.add(m) });
+  }
+  if (G.org) { const br = mkOrg2('brain'); br.position.set(0, .09, -.01); u.head.add(br); const cap = new THREE.Mesh(gBall, wetM(0x5a0a10)); cap.scale.set(.1, .04, .11); cap.position.set(0, .075, -.01); u.head.add(cap) }
+  if (G.bones) { const sk = bone(.1, 1); sk.rotation.z = 1.2; sk.position.set(.07, .1, 0); u.head.add(sk) }
+  if (G.gore) {
+    const put = (o, y) => { o.position.set(h.position.x + (rnd() - .5) * 2, y, h.position.z + (rnd() - .5) * 2); o.rotation.set(rnd() * 3, rnd() * 6, rnd() * 3); scene.add(o); keep(o) };
+    if (G.bones) { for (let i = 0; i < 5; i++) put(bone(.15 + rnd() * .25, 1), .03); put(skull(), .1) }
+    if (G.org) { ['gut', 'gut', 'kidney', 'lung'].forEach(k => put(mkOrg2(k), .05)) }
+  }
+  pool(h.position.x, h.position.z, 3); decal(h.position.x, h.position.z, 3); keep(h);
+}
+
+/* ---------- 3. TÉLÉVISION (boutique) RÉALISTE ---------- */
+const v3s = document.createElement('style');
+v3s.textContent = `#shop .panel{position:relative;width:min(900px,92vw);max-width:none;padding:26px 30px 34px;background:radial-gradient(circle at 50% 30%,#0b1f33,#04080e);border:16px solid #17191e;border-radius:26px;box-shadow:0 0 0 3px #3a3d44,0 40px 80px #000,inset 0 0 90px #1aa7ff44;color:#bfe6ff;font-family:'Courier New',monospace;animation:tvon .35s ease-out}
+#shop .panel::after{content:'';position:absolute;inset:0;pointer-events:none;background:repeating-linear-gradient(0deg,#0000 0 2px,#0005 3px);border-radius:10px}
+@keyframes tvon{0%{transform:scaleY(.01);filter:brightness(5)}60%{transform:scaleY(1.03);filter:brightness(2)}100%{transform:scaleY(1);filter:none}}
+.tvbar{display:flex;justify-content:space-between;font-size:13px;color:#7fd0ff;border-bottom:1px solid #1a6a9a;padding-bottom:6px;margin-bottom:10px;letter-spacing:2px}
+#shop h2{color:#ffd45a;text-shadow:0 0 8px #ffb300;font-family:inherit}#shop .cd{background:#07192a;border:1px solid #1a6a9a}#shop .cd b{color:#ffd45a}#shop button{background:#0d3a5a;border:1px solid #2aa0e0;color:#bfe6ff}#shop button:hover{background:#14608e}
+/* ---------- TÉLÉPHONE (style iPhone) ---------- */
+#phone .panel{position:relative;width:340px;height:690px;max-width:none;max-height:none;min-width:0;padding:0;border-radius:54px;background:#000;border:3px solid #3a3d44;box-shadow:0 0 0 9px #14161a,0 0 0 11px #2a2d33,0 30px 80px #000;overflow:hidden;font-family:-apple-system,system-ui,sans-serif}
+.pscr{position:absolute;inset:8px;border-radius:46px;overflow:hidden;background:linear-gradient(160deg,#1b2a4a,#3a1f4a 55%,#6a2a3a);display:flex;flex-direction:column;color:#fff}
+.pis{position:absolute;top:10px;left:50%;transform:translateX(-50%);width:96px;height:28px;background:#000;border-radius:16px}
+.pst{display:flex;justify-content:space-between;padding:14px 26px 4px;font-size:13px;font-weight:600}
+.pgrid{display:grid;grid-template-columns:repeat(4,1fr);gap:18px 8px;padding:26px 16px}
+.pap{text-align:center;font-size:11px;cursor:pointer}.pap i{display:flex;align-items:center;justify-content:center;width:56px;height:56px;margin:0 auto 4px;border-radius:14px;font-style:normal;font-size:28px;box-shadow:0 4px 10px #0006}
+.pbody{flex:1;overflow:auto;padding:6px 18px}.pbar{display:flex;justify-content:space-between;align-items:center;padding:10px 14px 4px;font-weight:600;font-size:16px}
+.pscr button{font-size:13px;padding:5px 11px;border-radius:14px;background:#ffffff30;border:0}.pscr .row{border-bottom:1px solid #ffffff22}
+.pnot{margin:10px 14px;padding:10px 12px;border-radius:16px;background:#ffffff2e;backdrop-filter:blur(8px);font-size:13px}
+.pmsg{background:#2a8af0;border-radius:18px 18px 18px 4px;padding:8px 12px;margin:6px 0;font-size:13px;max-width:85%}
+.phome{width:120px;height:5px;background:#fffc;border-radius:3px;margin:8px auto 10px;cursor:pointer}`;
+document.head.append(v3s);
+const _rs = renderShop;
+renderShop = function () { _rs(); $('shop').querySelector('.panel').insertAdjacentHTML('afterbegin', '<div class="tvbar"><span>● TÉLÉ-ACHAT</span><span>CH 07</span><span>' + new Date().toTimeString().slice(0, 5) + '</span></div>') };
+
+let pApp = null;
+const _ou = openUI; openUI = function (id) { if (id === 'phone') pApp = null; _ou(id) };
+async function setGore(on) { if (!on) { G.gore = G.bones = G.org = false; return } if (await askConfirm('Êtes-vous sûr ?', 'Le gore est violent et réservé aux adultes.') && await askConfirm('Vraiment sûr ?', 'Dernière confirmation.')) G.gore = G.bones = G.org = true }
+renderPhone = function () {
+  const p = $('phone').querySelector('.panel'), hh = new Date().toTimeString().slice(0, 5), r = (a, b) => '<div class="row"><span>' + a + '</span><b>' + b + '</b></div>';
+  const tg = (l, on, k, dis) => '<div class="row"><span>' + l + '</span><button data-g="' + k + '"' + (dis ? ' disabled' : '') + '>' + (on ? 'ON' : 'OFF') + '</button></div>';
+  const T = { stats: 'Statistiques', msgs: 'Messages', set: 'Réglages', act: 'Partie' };
+  let b = '';
+  if (!pApp) {
+    const A = [['stats', '📊', 'Stats', '#2a8a5a'], ['msgs', '💬', 'Messages', '#2aa84a'], ['set', '⚙️', 'Réglages', '#6a6f78'], ['act', '🎮', 'Partie', '#8a4ad8']];
+    b = '<div class="pgrid">' + A.map(a => '<div class="pap" data-p="' + a[0] + '"><i style="background:' + a[3] + '">' + a[1] + '</i>' + a[2] + '</div>').join('') + '</div>' + (P.log[0] ? '<div class="pnot"><b>Notification</b><br>' + P.log[0] + '</div>' : '');
+  } else if (pApp === 'stats') b = r('Zombies éliminés', P.kills) + r('Nuits survécues', P.nights) + r('Temps de survie', Math.floor(P.time / 60) + ' min ' + Math.floor(P.time % 60) + ' s') + r('Niveau / XP', lvl() + ' · ' + P.xp % 100 + '/100') + r('Argent gagné', P.earned + ' $') + r('Argent dépensé', P.spent + ' $') + r('Dégâts reçus', Math.round(P.dmgTaken)) + r('Équipe', P.kills + ' éliminés (solo)');
+  else if (pApp === 'msgs') b = P.log.length ? P.log.map(t => '<div class="pmsg">' + t + '</div>').join('') : '<p class="sub">Aucun message.</p>';
+  else if (pApp === 'set') b = tg('Notifications', P.notif, 'notif') + '<div class="row"><span>Sensibilité</span><input type="range" id="sens" min=".3" max="2.5" step=".1" value="' + P.sens + '"></div><div class="row"><span>Champ de vision</span><input type="range" id="fov" min="55" max="100" value="' + cam.fov + '"></div><div class="row"><span>Sang</span><button data-g="blood">' + BLN[G.blood] + '</button></div>' + tg('Gore', G.gore, 'gore') + tg('Os visibles', G.bones, 'bones', !G.gore) + tg('Organes et cerveau', G.org, 'org', !G.gore);
+  else b = '<div class="row"><span>Lancer la nuit (hôte)</span><button data-a="night">Lancer</button></div><div class="row"><span>Sauvegarde manuelle</span><button data-a="save">Sauvegarder</button></div><p class="sub">' + lastSave + '</p>';
+  p.innerHTML = '<div class="pscr"><div class="pis"></div><div class="pst"><span>' + hh + '</span><span>📶 🔋 100%</span></div>' + (pApp ? '<div class="pbar"><button data-p="home">‹ Accueil</button><span>' + T[pApp] + '</span><span style="width:70px"></span></div>' : '') + '<div class="pbody">' + b + '</div><div class="phome" data-p="home"></div><div style="text-align:center;margin-bottom:10px"><button data-a="close">Fermer (P)</button></div></div>';
+};
+$('phone').onclick = async e => {
+  const b = e.target.closest('button,[data-p]'); if (!b) return; const d = b.dataset;
+  if (d.p) { pApp = d.p === 'home' ? null : d.p; renderPhone(); return }
+  if (d.a === 'close') { closeUI(); return } if (d.a === 'night') { closeUI(); startNight(); return } if (d.a === 'save') { save(); renderPhone(); return }
+  if (d.g) { if (d.g === 'notif') P.notif = !P.notif; else if (d.g === 'gore') await setGore(!G.gore); else if (d.g === 'bones' && G.gore) G.bones = !G.bones; else if (d.g === 'org' && G.gore) G.org = !G.org; else if (d.g === 'blood') G.blood = (G.blood + 1) % 4; saveG(); renderPhone() }
+};
+$('phone').oninput = e => { const i = e.target.id; if (i === 'sens') P.sens = +e.target.value; else if (i === 'fov') { cam.fov = +e.target.value; cam.updateProjectionMatrix() } };
+$('settings').onchange = async e => {
+  const id = e.target.id, c = e.target.checked;
+  if (id === 'volR') G.vol = +e.target.value; else if (id === 'blSel') G.blood = +e.target.value;
+  else if (id === 'goreCk') { e.target.checked = G.gore; await setGore(c) } else if (id === 'boneCk') G.bones = c; else if (id === 'orgCk') G.org = c;
+  saveG(); renderSet();
+};
+
+/* ---------- 4. MULTIJOUEUR : chaque étape Firebase annonce exactement quel chemin est refusé ---------- */
+const stp = (l, p) => p.catch(e => { throw new Error(l + ' → ' + (e.code || '') + ' ' + (e.message || '')) });
+mpJoin = async function (code, host) {
+  const { ref, get, set, onValue, onDisconnect } = MP.F, rr = await stp('lire rooms/' + code, get(ref(MP.db, 'rooms/' + code)));
+  if (!rr.exists()) return mpMsg('Salon introuvable.');
+  const r = rr.val(), pl = await stp('lire roomPlayers/' + code, get(ref(MP.db, 'roomPlayers/' + code))), v = pl.val() || {};
+  if (!host && !v[MP.uid] && Object.keys(v).length >= r.max) return mpMsg('Salon complet.'); if (!host && r.state === 'playing') return mpMsg('Partie déjà lancée.');
+  MP.code = code; MP.host = r.host === MP.uid; MP.max = r.max; const me = ref(MP.db, 'roomPlayers/' + code + '/' + MP.uid);
+  await stp('écrire roomPlayers/' + code + '/' + MP.uid, set(me, { name: MP.name, x: 0, z: 7.5, yaw: 0 })); onDisconnect(me).remove().catch(() => { });
+  onValue(ref(MP.db, 'roomPlayers/' + code), s => mpPlayers(s.val() || {}), e => mpMsg('Lecture refusée : ' + e.code));
+  onValue(ref(MP.db, 'rooms/' + code + '/state'), s => { if (s.val() === 'playing' && !playing) mpStart() }, e => mpMsg('Lecture refusée : ' + e.code)); mpLobby();
+};
+mpTick = function (dt) {
+  if (!MP.code) return; const { ref, update } = MP.F; MP.t += dt;
+  if (MP.t > .1) { MP.t = 0; update(ref(MP.db, 'roomPlayers/' + MP.code + '/' + MP.uid), { x: P.pos.x, z: P.pos.z, yaw: P.face, name: MP.name }).catch(e => { if (!MP.er) { MP.er = 1; msg('Synchro refusée : ' + (e.code || e.message), 6000) } }) }
+  for (const r of MP.rem.values()) { if (!r.tg) continue; const k = Math.min(1, dt * 10), nx = r.px + (r.tg.x - r.px) * k, nz = r.pz + (r.tg.z - r.pz) * k, sp = Math.hypot(nx - r.px, nz - r.pz) / Math.max(dt, .001); r.px = nx; r.pz = nz; r.a.position.set(nx, 0, nz); r.a.rotation.y = r.tg.yaw; walkAnim(r.a.userData, Math.min(sp, 7), tm) }
+};
+mpd.onclick = async e => {
+  const b = e.target.closest('button'); if (!b) return; const m = b.dataset.m;
+  if (m === 'close') { mpd.classList.add('hide'); return } if (m === 'leave') { location.reload(); return }
+  if (m === 'start') { if (MP.host) MP.F.set(MP.F.ref(MP.db, 'rooms/' + MP.code + '/state'), 'playing').catch(x => mpMsg('Erreur : ' + x.message)); return }
+  MP.name = ($('mpn') && $('mpn').value.trim().slice(0, 16)) || MP.name; mpMsg('Connexion...'); if (!await mpInit()) return; const { ref, get, set } = MP.F; mpMsg('');
+  try {
+    if (m === 'create') { const code = Math.random().toString(36).slice(2, 7).toUpperCase(); await stp('créer rooms/' + code, set(ref(MP.db, 'rooms/' + code), { host: MP.uid, max: +$('mpx').value, priv: $('mpp').checked, state: 'lobby', name: MP.name })); await mpJoin(code, true) }
+    else if (m === 'join') { const c = $('mpc').value.trim().toUpperCase(); if (c) await mpJoin(c, false) }
+    else if (m === 'list') { const s = await stp('lire rooms', get(ref(MP.db, 'rooms'))), v = s.val() || {}, l = Object.entries(v).filter(([c, r]) => !r.priv && r.state === 'lobby'); $('mpl').innerHTML = l.length ? l.map(([c, r]) => '<div class="row"><span>' + esc(r.name) + ' (' + r.max + ' max)</span><button data-m="jc" data-c="' + c + '">Rejoindre</button></div>').join('') : '<p class="sub">Aucun salon public.</p>' }
+    else if (m === 'jc') await mpJoin(b.dataset.c, false);
+  } catch (x) { mpMsg('Erreur : ' + x.message) }
+};
