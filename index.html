@@ -59,12 +59,27 @@ small{display:block;margin-top:14px;color:#6f7886;font-size:12px}
       <tr><td>Espace / B</td><td>Sauter / roulade</td></tr>
       <tr><td>Clic gauche</td><td>Coup de poing</td></tr>
       <tr><td>E</td><td>Interagir</td></tr>
+      <tr><td>Y / T</td><td>Bandage / garrot (morsure)</td></tr>
       <tr><td>N</td><td>Lancer la nuit</td></tr>
       <tr><td>V</td><td>Vue 1re / 3e personne</td></tr>
     </table>
     <button id="playBtn">Jouer en solo</button>
+    <button id="setBtn" style="margin-left:10px;background:#3a2a24">Paramètres</button>
     <small>Multijoueur, armes, portes et boutique arrivent dans les groupes suivants.</small>
   </div>
+</div>
+<div id="settings" class="ov hide">
+  <div class="panel">
+    <h2>Paramètres</h2>
+    <p class="sub">Le sang léger est toujours actif.</p>
+    <label><input type="checkbox" id="goreCk"> Gore (sang abondant, os, amputation)</label><br><br>
+    <label><input type="checkbox" id="orgCk"> Organes visibles (nécessite Gore)</label><br><br>
+    <button id="setClose">Fermer</button>
+  </div>
+</div>
+<div id="conf" class="ov hide" style="z-index:9">
+  <div class="panel"><h2 id="confT"></h2><p id="confP" class="sub"></p>
+    <button id="confYes">Oui</button> <button id="confNo" style="background:#3a3f4a">Non</button></div>
 </div>
 <div id="pause" class="ov hide">
   <div class="panel"><h2>Pause</h2><button id="resumeBtn">Reprendre</button></div>
